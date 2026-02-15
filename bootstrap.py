@@ -6,6 +6,7 @@ import urllib.request
 import zipfile
 import shutil
 import os
+import time
 
 
 
@@ -33,51 +34,84 @@ REQUIRED_PACKAGES = [
 ]
 
 
+
+def progress_bar(current, total, prefix=""):
+    bar_length = 40
+    percent = current / total
+    filled = int(bar_length * percent)
+    bar = "█" * filled + "-" * (bar_length - filled)
+    print(f"\r{prefix} |{bar}| {percent*100:5.1f}%", end="", flush=True)
+
+
 def check_python():
     if sys.version_info < (3, 10):
         print("Python 3.10+ is required.")
         sys.exit(1)
 
 
+
 def install_package(package):
-    print(f"Installing {package}...")
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", package]
+        [sys.executable, "-m", "pip", "install", package],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
 def ensure_packages():
-    print("Checking dependencies...")
+    print("Checking dependencies...\n")
 
-    for package in REQUIRED_PACKAGES:
+    total = len(REQUIRED_PACKAGES)
+    installed = 0
+
+    for i, package in enumerate(REQUIRED_PACKAGES, start=1):
         module_name = package.replace("-", "_")
         try:
             importlib.import_module(module_name)
         except ImportError:
             install_package(package)
 
-    print("All dependencies ready.")
+        installed += 1
+        progress_bar(installed, total, prefix="Dependencies")
+
+    print("\nAll dependencies ready.\n")
+
+
+
+def download_with_progress(url, destination):
+
+    def reporthook(block_num, block_size, total_size):
+        downloaded = block_num * block_size
+        if total_size > 0:
+            progress_bar(downloaded, total_size, prefix="Downloading model")
+
+    urllib.request.urlretrieve(url, destination, reporthook)
+
 
 
 def download_model():
     zip_path = BASE_DIR / f"{MODEL_NAME}.zip"
 
-    print("\nVosk model not found.")
-    print("Downloading model (this may take 1–3 minutes)...")
+    print("Vosk model not found.\n")
 
     try:
-        urllib.request.urlretrieve(MODEL_URL, zip_path)
+        download_with_progress(MODEL_URL, zip_path)
     except Exception as e:
-        print("Download failed:", e)
+        print("\nDownload failed:", e)
         sys.exit(1)
 
-    print("Extracting model...")
+    print("\nExtracting model...")
 
     try:
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(BASE_DIR)
+            members = zip_ref.namelist()
+            total = len(members)
+
+            for i, member in enumerate(members, start=1):
+                zip_ref.extract(member, BASE_DIR)
+                progress_bar(i, total, prefix="Extracting")
     except Exception as e:
-        print("Extraction failed:", e)
+        print("\nExtraction failed:", e)
         sys.exit(1)
     finally:
         zip_path.unlink(missing_ok=True)
@@ -89,30 +123,51 @@ def download_model():
                 break
 
     if not MODEL_PATH.exists():
-        print("Model extraction failed. Folder not found.")
+        print("\nModel extraction failed.")
         sys.exit(1)
 
-    print("Model ready.\n")
+    print("\nModel ready.\n")
+
 
 
 def ensure_model():
     if MODEL_PATH.exists():
-        print("Vosk model detected.")
+        print("Vosk model detected.\n")
         return
 
     download_model()
+
 
 
 def ensure_settings():
     SETTINGS_DIR.mkdir(exist_ok=True)
 
 
+
 def bootstrap():
-    print("Starting AERIS first-run setup...\n")
+    print("\n==============================")
+    print("  AERIS First-Run Installer")
+    print("==============================\n")
 
     check_python()
+
+    steps = 4
+    current_step = 0
+
+    current_step += 1
+    print(f"[{current_step}/{steps}] Installing dependencies")
     ensure_packages()
+
+    current_step += 1
+    print(f"[{current_step}/{steps}] Checking voice model")
     ensure_model()
+
+    current_step += 1
+    print(f"[{current_step}/{steps}] Preparing settings folder")
     ensure_settings()
 
-    print("AERIS setup complete.\n")
+    current_step += 1
+    print(f"[{current_step}/{steps}] Finalizing setup")
+    time.sleep(0.5)
+
+    print("\nAERIS setup complete.\n")
