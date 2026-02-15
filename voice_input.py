@@ -61,7 +61,7 @@ WAKE_ALIASES = [
 
 
 def listen_for_wake_word(wake_word="aeris", timeout=None):
-    print(f"Listening for wake word: '{wake_word}'...")
+    print(f"Click the orb to start or say '{wake_word}' to wake up Aeris...")
 
     rec = vosk.KaldiRecognizer(model, 16000)
     start_time = time.time()
