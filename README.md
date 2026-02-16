@@ -86,7 +86,7 @@ You need to install Python on your machine, i recommend using Python 3.12.9
 
 * [Python](https://www.python.org/downloads/release/python-3129/)
 * OpenRouter API Key [Get it here](https://openrouter.ai/settings/keys)
-* SerpAPI API Key [Get it here](https://serpapi.com/dashboard)
+* SerpApi API Key [Get it here](https://serpapi.com/dashboard)
 
 ### Installation
 
