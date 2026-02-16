@@ -146,7 +146,7 @@ def ensure_settings():
 
 def bootstrap():
     print("\n==============================")
-    print("  AERIS First-Run Installer")
+    print("       AERIS BOOTSTRAP")
     print("==============================\n")
 
     check_python()
