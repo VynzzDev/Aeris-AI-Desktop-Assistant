@@ -19,7 +19,7 @@
   <p align="center">
     Your AI Desktop Assistant that is ready to help you with everything from opening applications, chatting, and searching.
     <br />
-    <a href="https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/blob/main/interface.py/README.md"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/blob/main/README.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/releases">Releases</a>
