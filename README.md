@@ -1,10 +1,10 @@
 <a id="readme-top"></a>
 
-[![Contributors][https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant]][contributors-url]
-[![Forks][https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant]][forks-url]
-[![Stargazers][https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant]][stars-url]
-[![Issues][https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant]][issues-url]
-[![project_license][https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant]][license-url]
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![project_license][license-shield]][license-url]
 
 
 
