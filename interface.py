@@ -38,10 +38,23 @@ class AerisUI:
 
         self.push_to_talk_event = threading.Event()
         self.backend_loop = None
+        self._chat_loading_ref = None
 
 
     def set_backend_loop(self, loop):
         self.backend_loop = loop
+
+
+    def _safe_ui(self, fn):
+        if not self._page:
+            return
+        try:
+            self._page.run_threadsafe(fn)
+        except:
+            try:
+                fn()
+            except:
+                pass
 
 
     async def _main(self, page: ft.Page):
@@ -58,130 +71,6 @@ class AerisUI:
             self._build_main_ui()
 
         page.update()
-
-
-    def _show_setup(self):
-
-        self._success_icon = ft.Icon(
-            ft.Icons.CHECK_CIRCLE,
-            size=90,
-            color="#22c55e",
-            opacity=0,
-        )
-
-        self._openrouter_input = ft.TextField(
-            label="OpenRouter API Key",
-            password=True,
-            filled=True,
-            bgcolor="#111827",
-            border_radius=16,
-        )
-
-        self._serpapi_input = ft.TextField(
-            label="SerpAPI Key",
-            password=True,
-            filled=True,
-            bgcolor="#111827",
-            border_radius=16,
-        )
-
-        self._save_btn = ft.ElevatedButton(
-            "Initialize AERIS",
-            style=ft.ButtonStyle(
-                shape=ft.RoundedRectangleBorder(radius=18),
-                bgcolor="#2563eb",
-                padding=20,
-            ),
-            on_click=self._save_api_keys,
-        )
-
-        setup_card = ft.Container(
-            width=480,
-            padding=40,
-            border_radius=24,
-            bgcolor="#0f172a",
-            shadow=ft.BoxShadow(
-                blur_radius=50,
-                spread_radius=1,
-                color="#00000088",
-            ),
-            content=ft.Column(
-                [
-                    ft.Text("Welcome to AERIS",
-                            size=26,
-                            weight=ft.FontWeight.W_600),
-                    ft.Text("Enter your API credentials to begin.",
-                            size=14,
-                            color="#94a3b8"),
-                    ft.Container(height=25),
-                    self._openrouter_input,
-                    self._serpapi_input,
-                    ft.Container(height=25),
-                    self._save_btn,
-                    ft.Container(height=25),
-                    self._success_icon,
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=15,
-            ),
-        )
-
-        background = ft.Container(
-            expand=True,
-            gradient=ft.RadialGradient(
-                center=ft.Alignment(0, 0),
-                radius=1.2,
-                colors=["#0f1c3d", "#0b0f19"],
-            ),
-            content=ft.Row(
-                [setup_card],
-                alignment=ft.MainAxisAlignment.CENTER,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-        )
-
-        self._page.add(background)
-
-
-    async def _success_animation(self):
-
-        self._save_btn.disabled = True
-        self._success_icon.opacity = 1
-        self._page.update()
-
-        for i in range(15):
-            self._success_icon.scale = 1 + (i * 0.02)
-            self._page.update()
-            await asyncio.sleep(0.02)
-
-        await asyncio.sleep(0.6)
-
-        self._page.controls.clear()
-        self._build_main_ui()
-        self._page.update()
-
-
-    def _save_api_keys(self, e):
-
-        openrouter_key = self._openrouter_input.value.strip()
-        serpapi_key = self._serpapi_input.value.strip()
-
-        if not openrouter_key:
-            return
-
-        os.makedirs(CONFIG_DIR, exist_ok=True)
-
-        with open(API_FILE, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "openrouter_api_key": openrouter_key,
-                    "serpapi_api_key": serpapi_key,
-                },
-                f,
-                indent=4,
-            )
-
-        asyncio.create_task(self._success_animation())
 
 
     def _build_main_ui(self):
@@ -344,38 +233,53 @@ class AerisUI:
         )
 
         return self._chat_view
-    
+
+
+    def show_chat_loading(self):
+        if self._mode != "chat":
+            return
+
+        loading = self._bubble("Thinking...", user=False)
+        self._chat_loading_ref = loading
+        self._safe_ui(lambda: self._chat_list.controls.append(loading))
+        self._safe_ui(self._page.update)
+
+
+    def remove_chat_loading(self):
+        if self._chat_loading_ref:
+            try:
+                self._safe_ui(lambda: self._chat_list.controls.remove(self._chat_loading_ref))
+            except:
+                pass
+            self._chat_loading_ref = None
+            self._safe_ui(self._page.update)
+
+
     def append_ai_typing(self, full_text: str, speed: float = 0.02):
+
+        if self._mode != "chat":
+            return
 
         async def typing_animation():
 
+            self.remove_chat_loading()
+
             bubble = self._bubble("", user=False)
 
-            def add_empty():
-                self._chat_list.controls.append(bubble)
-                self._page.update()
-
-            try:
-                self._page.call_from_thread(add_empty)
-            except:
-                add_empty()
+            self._safe_ui(lambda: self._chat_list.controls.append(bubble))
+            self._safe_ui(self._page.update)
 
             text_control = bubble.controls[0].content
-
             current_text = ""
 
             for char in full_text:
                 current_text += char
 
-                def update_text():
+                def update():
                     text_control.value = current_text
                     self._page.update()
 
-                try:
-                    self._page.call_from_thread(update_text)
-                except:
-                    update_text()
-
+                self._safe_ui(update)
                 await asyncio.sleep(speed)
 
         if self.backend_loop:
@@ -384,6 +288,64 @@ class AerisUI:
                 self.backend_loop
             )
 
+
+    def _send_message(self, e):
+
+        text = self._input.value.strip()
+        if not text:
+            return
+
+        self._chat_list.controls.append(self._bubble(text, user=True))
+        self._input.value = ""
+        self._page.update()
+
+        self.show_chat_loading()
+
+        if self.backend_loop:
+            from aeris import process_user_input
+            asyncio.run_coroutine_threadsafe(
+                process_user_input(self, text, use_tts=False),
+                self.backend_loop
+            )
+
+
+    def write_log(self, text):
+        if self._mode == "chat":
+            self.append_ai_typing(str(text))
+
+
+    def _modern_icon_button(self, icon, handler):
+        return ft.Container(
+            content=ft.IconButton(icon=icon, icon_size=20, on_click=handler),
+            bgcolor="#1e293b",
+            border_radius=14,
+            padding=8,
+        )
+
+
+    def _bubble(self, text, user=False):
+        align = ft.MainAxisAlignment.END if user else ft.MainAxisAlignment.START
+        color = "#2563eb" if user else "#1c2438"
+
+        return ft.Row(
+            [
+                ft.Container(
+                    content=ft.Text(text, selectable=True),
+                    bgcolor=color,
+                    padding=16,
+                    border_radius=16,
+                    width=460,
+                )
+            ],
+            alignment=align,
+        )
+
+
+    def _switch(self, mode):
+        self._mode = mode
+        self._live_view.visible = mode == "live"
+        self._chat_view.visible = mode == "chat"
+        self._page.update()
 
 
     async def _animation_loop(self):
@@ -423,79 +385,10 @@ class AerisUI:
             await asyncio.sleep(1 / 60)
 
 
-    def _send_message(self, e):
-
-        text = self._input.value.strip()
-        if not text:
-            return
-
-        self._append_user_message(text)
-
-        if self.backend_loop:
-            from aeris import process_user_input
-            asyncio.run_coroutine_threadsafe(
-                process_user_input(self, text, use_tts=False),
-                self.backend_loop
-            )
-
-
-    def _append_user_message(self, text):
-        self._chat_list.controls.append(self._bubble(text, user=True))
-        self._input.value = ""
-        self._page.update()
-
-
-
-    def write_log(self, text):
-        self.append_ai_typing(str(text))
-
-
-    def _modern_icon_button(self, icon, handler):
-        return ft.Container(
-            content=ft.IconButton(icon=icon, icon_size=20, on_click=handler),
-            bgcolor="#1e293b",
-            border_radius=14,
-            padding=8,
-        )
-
-
-    def _bubble(self, text, user=False):
-        align = ft.MainAxisAlignment.END if user else ft.MainAxisAlignment.START
-        color = "#2563eb" if user else "#1c2438"
-
-        return ft.Row(
-            [
-                ft.Container(
-                    content=ft.Text(text, selectable=True),
-                    bgcolor=color,
-                    padding=16,
-                    border_radius=16,
-                    width=460,
-                )
-            ],
-            alignment=align,
-        )
-
-
-    def _switch(self, mode):
-        self._mode = mode
-        self._live_view.visible = mode == "live"
-        self._chat_view.visible = mode == "chat"
-        self._page.update()
-
-
     def _set_state_threadsafe(self, state):
-        if not self._page:
-            self._state = state
-            return
-
         def update():
             self._state = state
-
-        try:
-            self._page.call_from_thread(update)
-        except:
-            self._state = state
+        self._safe_ui(update)
 
 
     def start_listening(self): self._set_state_threadsafe("listening")

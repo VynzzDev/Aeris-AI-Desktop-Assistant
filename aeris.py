@@ -186,7 +186,6 @@ async def ai_loop(ui: AerisUI):
             stop_listening_flag.clear()
 
         ui.start_listening()
-        ui.write_log("Listening...")
 
         stop_listening_flag.clear()
 
