@@ -68,7 +68,6 @@ Aeris is an AI personal assistant that can help you with various things, from op
 
 * [![Python][Python-ic]][Python-url]
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -101,7 +100,6 @@ You need to install Python on your machine, i recommend using Python 3.12.9
    ```
 3. That's it, all dependencies will automatically download, and you will be asked to enter api key.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -124,8 +122,6 @@ You need to install Python on your machine, i recommend using Python 3.12.9
 
 See the [open issues](https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/issues) for a full list of proposed features (and known issues).
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 ## Contributing
@@ -141,7 +137,7 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 
 ### Top contributors:
 
@@ -155,7 +151,6 @@ Don't forget to give the project a star! Thanks again!
 
 Distributed under the project_license. See `LICENSE for more information.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -164,7 +159,7 @@ Distributed under the project_license. See `LICENSE for more information.
 
 
 
-## Need Hosting For Your App?
+**Need Hosting For Your App?**
 Click the banner below :>
 
 
