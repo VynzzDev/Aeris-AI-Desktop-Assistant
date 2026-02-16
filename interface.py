@@ -344,6 +344,46 @@ class AerisUI:
         )
 
         return self._chat_view
+    
+    def append_ai_typing(self, full_text: str, speed: float = 0.02):
+
+        async def typing_animation():
+
+            bubble = self._bubble("", user=False)
+
+            def add_empty():
+                self._chat_list.controls.append(bubble)
+                self._page.update()
+
+            try:
+                self._page.call_from_thread(add_empty)
+            except:
+                add_empty()
+
+            text_control = bubble.controls[0].content
+
+            current_text = ""
+
+            for char in full_text:
+                current_text += char
+
+                def update_text():
+                    text_control.value = current_text
+                    self._page.update()
+
+                try:
+                    self._page.call_from_thread(update_text)
+                except:
+                    update_text()
+
+                await asyncio.sleep(speed)
+
+        if self.backend_loop:
+            asyncio.run_coroutine_threadsafe(
+                typing_animation(),
+                self.backend_loop
+            )
+
 
 
     async def _animation_loop(self):
@@ -405,19 +445,9 @@ class AerisUI:
         self._page.update()
 
 
-    def append_ai_message(self, text):
-        def _update():
-            self._chat_list.controls.append(self._bubble(text, user=False))
-            self._page.update()
-
-        try:
-            self._page.call_from_thread(_update)
-        except:
-            _update()
-
 
     def write_log(self, text):
-        self.append_ai_message(str(text))
+        self.append_ai_typing(str(text))
 
 
     def _modern_icon_button(self, icon, handler):
