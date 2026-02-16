@@ -7,21 +7,12 @@ def weather_action(
     player=None,
     session_memory=None
 ) -> str:
-    """
-    Weather report action.
-
-    Pure action layer.
-    - Opens Google weather search
-    - Returns text response
-    - Does NOT speak
-    - Does NOT touch UI
-    """
 
     city = parameters.get("city")
     time_param = parameters.get("time")
 
     if not city or not isinstance(city, str):
-        return "Sir, the city is missing for the weather report."
+        return "I couldn't determine the city for the weather report."
 
     city = city.strip()
 
@@ -37,9 +28,9 @@ def weather_action(
     try:
         webbrowser.open(url)
     except Exception:
-        return "Sir, I couldn't open the browser for the weather report."
+        return "I couldn't open the browser for the weather report."
 
-    message = f"Showing the weather for {city}, {time_param}, sir."
+    message = f"Showing the weather for {city}, {time_param}."
 
     if session_memory:
         try:
@@ -47,7 +38,7 @@ def weather_action(
                 query=search_query,
                 response=message
             )
-        except Exception:
+        except:
             pass
 
     return message

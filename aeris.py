@@ -22,6 +22,8 @@ from memory.temporary_memory import TemporaryMemory
 interrupt_commands = ["mute", "quit", "exit", "stop"]
 temp_memory = TemporaryMemory()
 
+MAIN_LOOP = None
+
 
 async def get_voice_input():
     return await asyncio.to_thread(record_voice)
@@ -34,15 +36,128 @@ def speak_with_state(ui: AerisUI, response: str):
         print("Speak error:", e)
 
 
-async def wait_for_wake_word():
-    return await asyncio.to_thread(listen_for_wake_word, "aeris")
+async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
 
+    if not user_text:
+        return
 
-async def wait_for_push(ui: AerisUI):
-    return await asyncio.to_thread(ui.push_to_talk_event.wait)
+    if any(cmd in user_text.lower() for cmd in interrupt_commands):
+        stop_speaking()
+        temp_memory.reset()
+        ui.stop_speaking()
+        ui.stop_processing()
+        return
+
+    ui.start_processing()
+
+    try:
+        aircraft_response = handle_aircraft_command(user_text)
+        if aircraft_response:
+            ui.write_log(f"AI: {aircraft_response}")
+            if use_tts:
+                speak_with_state(ui, aircraft_response)
+            else:
+                ui.stop_processing()
+            return
+    except Exception as e:
+        error_msg = f"Aircraft system error: {e}"
+        ui.write_log(f"AI: {error_msg}")
+        if use_tts:
+            speak_with_state(ui, error_msg)
+        else:
+            ui.stop_processing()
+        return
+
+    long_term_memory = load_memory()
+    memory_for_prompt = {}
+
+    identity = long_term_memory.get("identity", {})
+    if "name" in identity:
+        memory_for_prompt["user_name"] = identity["name"].get("value")
+
+    history_lines = temp_memory.get_history_for_prompt()
+    if history_lines:
+        memory_for_prompt["recent_conversation"] = history_lines
+
+    try:
+        llm_output = await asyncio.to_thread(
+            get_llm_output,
+            user_text,
+            memory_for_prompt
+        )
+    except Exception as e:
+        error_msg = f"AI error: {e}"
+        ui.write_log(f"AI: {error_msg}")
+        if use_tts:
+            speak_with_state(ui, error_msg)
+        else:
+            ui.stop_processing()
+        return
+
+    intent = llm_output.get("intent", "chat")
+    parameters = llm_output.get("parameters") or {}
+    response = llm_output.get("text") or ""
+    memory_update = llm_output.get("memory_update")
+
+    if memory_update and isinstance(memory_update, dict):
+        update_memory(memory_update)
+
+    temp_memory.set_last_ai_response(response)
+
+    final_text = None
+
+    if intent == "open_app":
+        result = open_app(
+            parameters=parameters,
+            response=response,
+            player=ui,
+            session_memory=temp_memory
+        )
+        final_text = response or f"Opening {parameters.get('app_name','application')}."
+
+    elif intent == "weather_report":
+        result = weather_action(
+            parameters=parameters,
+            player=ui,
+            session_memory=temp_memory
+        )
+        final_text = result
+
+    elif intent == "search":
+        result = web_search(
+            parameters=parameters,
+            player=ui,
+            session_memory=temp_memory
+        )
+        final_text = result
+
+    elif intent == "send_message":
+        result = send_message(
+            parameters=parameters,
+            player=ui,
+            session_memory=temp_memory
+        )
+        final_text = response or "Message sent."
+
+    else:
+        final_text = response
+
+    if final_text and final_text.strip():
+        ui.write_log(f"AI: {final_text}")
+        if use_tts:
+            speak_with_state(ui, final_text)
+        else:
+            ui.stop_processing()
+    else:
+        ui.write_log("AI: Done.")
+        ui.stop_processing()
 
 
 async def ai_loop(ui: AerisUI):
+
+    global MAIN_LOOP
+    MAIN_LOOP = asyncio.get_running_loop()
+    ui.set_backend_loop(MAIN_LOOP)
 
     while True:
 
@@ -79,123 +194,7 @@ async def ai_loop(ui: AerisUI):
 
         ui.stop_listening()
 
-        if not user_text:
-            continue
-
-
-        if any(cmd in user_text.lower() for cmd in interrupt_commands):
-            stop_speaking()
-            temp_memory.reset()
-            ui.stop_speaking()
-            ui.stop_processing()
-            continue
-
-        ui.write_log(f"You: {user_text}")
-
-        try:
-            aircraft_response = handle_aircraft_command(user_text)
-
-            if aircraft_response:
-                ui.start_processing()
-                ui.write_log(f"AI: {aircraft_response}")
-                speak_with_state(ui, aircraft_response)
-                continue
-
-        except Exception as e:
-            error_msg = f"Aircraft system error: {e}"
-            ui.start_processing()
-            ui.write_log(f"AI: {error_msg}")
-            speak_with_state(ui, error_msg)
-            continue
-
-        ui.start_processing()
-
-        long_term_memory = load_memory()
-        memory_for_prompt = {}
-
-        identity = long_term_memory.get("identity", {})
-        if "name" in identity:
-            memory_for_prompt["user_name"] = identity["name"].get("value")
-
-        history_lines = temp_memory.get_history_for_prompt()
-        if history_lines:
-            memory_for_prompt["recent_conversation"] = history_lines
-
-        try:
-            llm_output = await asyncio.to_thread(
-                get_llm_output,
-                user_text,
-                memory_for_prompt
-            )
-        except Exception as e:
-            error_msg = f"AI error: {e}"
-            ui.write_log(f"AI: {error_msg}")
-            speak_with_state(ui, error_msg)
-            continue
-
-        intent = llm_output.get("intent", "chat")
-        parameters = llm_output.get("parameters", {})
-        response = llm_output.get("text")
-        memory_update = llm_output.get("memory_update")
-
-        if memory_update and isinstance(memory_update, dict):
-            update_memory(memory_update)
-
-        temp_memory.set_last_ai_response(response)
-
-        if intent == "open_app" and parameters.get("app_name"):
-            result = open_app(
-                parameters=parameters,
-                response=response,
-                player=ui,
-                session_memory=temp_memory
-            )
-            if result:
-                speak_with_state(ui, result)
-            else:
-                ui.stop_processing()
-
-        elif intent == "weather_report" and parameters.get("city"):
-            result = weather_action(
-                parameters=parameters,
-                player=ui,
-                session_memory=temp_memory
-            )
-            if result:
-                ui.write_log(f"AI: {result}")
-                speak_with_state(ui, result)
-            else:
-                ui.stop_processing()
-
-        elif intent == "search" and parameters.get("query"):
-            result = web_search(
-                parameters=parameters,
-                player=ui,
-                session_memory=temp_memory
-            )
-            if result:
-                ui.write_log(f"AI: {result}")
-                speak_with_state(ui, result)
-            else:
-                ui.stop_processing()
-
-        elif intent == "send_message":
-            result = send_message(
-                parameters=parameters,
-                player=ui,
-                session_memory=temp_memory
-            )
-            if result:
-                speak_with_state(ui, result)
-            else:
-                ui.stop_processing()
-
-        else:
-            if response:
-                ui.write_log(f"AI: {response}")
-                speak_with_state(ui, response)
-            else:
-                ui.stop_processing()
+        await process_user_input(ui, user_text, use_tts=True)
 
         await asyncio.sleep(0.05)
 

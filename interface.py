@@ -37,6 +37,11 @@ class AerisUI:
         self._running = True
 
         self.push_to_talk_event = threading.Event()
+        self.backend_loop = None
+
+
+    def set_backend_loop(self, loop):
+        self.backend_loop = loop
 
 
     async def _main(self, page: ft.Page):
@@ -53,6 +58,7 @@ class AerisUI:
             self._build_main_ui()
 
         page.update()
+
 
     def _show_setup(self):
 
@@ -230,10 +236,8 @@ class AerisUI:
         orb_button = ft.GestureDetector(
             content=ft.Stack(
                 [
-                    ft.Row([self._glow],
-                           alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Row([self._core],
-                           alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Row([self._glow], alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Row([self._core], alignment=ft.MainAxisAlignment.CENTER),
                 ]
             ),
             on_tap=self._on_push_to_talk,
@@ -279,7 +283,6 @@ class AerisUI:
 
 
     def _on_push_to_talk(self, e):
-
         from voice_input import stop_listening_flag
 
         if self._state == "listening":
@@ -288,7 +291,6 @@ class AerisUI:
             return
 
         self.push_to_talk_event.set()
-
 
 
     def _build_chat(self):
@@ -378,26 +380,44 @@ class AerisUI:
             self._status.value = self._state.capitalize()
 
             self._page.update()
-
             await asyncio.sleep(1 / 60)
 
 
-    def write_log(self, text):
+    def _send_message(self, e):
 
-        if not self._page:
+        text = self._input.value.strip()
+        if not text:
             return
 
+        self._append_user_message(text)
+
+        if self.backend_loop:
+            from aeris import process_user_input
+            asyncio.run_coroutine_threadsafe(
+                process_user_input(self, text, use_tts=False),
+                self.backend_loop
+            )
+
+
+    def _append_user_message(self, text):
+        self._chat_list.controls.append(self._bubble(text, user=True))
+        self._input.value = ""
+        self._page.update()
+
+
+    def append_ai_message(self, text):
         def _update():
-            if hasattr(self, "_chat_list"):
-                self._chat_list.controls.append(
-                    self._bubble(str(text), user=False)
-                )
+            self._chat_list.controls.append(self._bubble(text, user=False))
             self._page.update()
 
         try:
             self._page.call_from_thread(_update)
         except:
-            pass
+            _update()
+
+
+    def write_log(self, text):
+        self.append_ai_message(str(text))
 
 
     def _modern_icon_button(self, icon, handler):
@@ -407,15 +427,6 @@ class AerisUI:
             border_radius=14,
             padding=8,
         )
-
-
-    def _send_message(self, e):
-        text = self._input.value.strip()
-        if not text:
-            return
-        self._chat_list.controls.append(self._bubble(text, user=True))
-        self._input.value = ""
-        self._page.update()
 
 
     def _bubble(self, text, user=False):
