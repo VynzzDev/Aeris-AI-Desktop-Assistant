@@ -14,10 +14,10 @@
     <img src="assets/app/icon/aeris.png" alt="Aeris" width="80" height="80">
   </a>
 
-<h3 align="center">AERIS AI</h3>
+<h3 align="center">A.E.R.I.S</h3>
 
   <p align="center">
-    Your AI Desktop Assistant that is ready to help you with everything from opening applications, chatting, and searching.
+    Autonomous Engine for Responsive Intelligent Systems (A.E.R.I.S)
     <br />
     <a href="https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/blob/main/README.md"><strong>Explore the docs »</strong></a>
     <br />
