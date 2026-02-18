@@ -270,7 +270,7 @@ class AerisUI:
 
         header = ft.Row(
             [
-                ft.Text("AERIS", size=18, weight=ft.FontWeight.W_600),
+                ft.Text("A.E.R.I.S", size=18, weight=ft.FontWeight.W_600),
                 ft.Container(expand=True),
                 toggle,
             ]
@@ -337,7 +337,7 @@ class AerisUI:
 
         header = ft.Row(
             [
-                ft.Text("AERIS", size=18, weight=ft.FontWeight.W_600),
+                ft.Text("A.E.R.I.S", size=18, weight=ft.FontWeight.W_600),
                 ft.Container(expand=True),
                 toggle,
             ]
