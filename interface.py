@@ -73,6 +73,130 @@ class AerisUI:
         page.update()
 
 
+    def _show_setup(self):
+
+        self._success_icon = ft.Icon(
+            ft.Icons.CHECK_CIRCLE,
+            size=90,
+            color="#22c55e",
+            opacity=0,
+        )
+
+        self._openrouter_input = ft.TextField(
+            label="OpenRouter API Key",
+            password=True,
+            filled=True,
+            bgcolor="#111827",
+            border_radius=16,
+        )
+
+        self._serpapi_input = ft.TextField(
+            label="SerpAPI Key",
+            password=True,
+            filled=True,
+            bgcolor="#111827",
+            border_radius=16,
+        )
+
+        self._save_btn = ft.ElevatedButton(
+            "Initialize AERIS",
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=18),
+                bgcolor="#2563eb",
+                padding=20,
+            ),
+            on_click=self._save_api_keys,
+        )
+
+        setup_card = ft.Container(
+            width=480,
+            padding=40,
+            border_radius=24,
+            bgcolor="#0f172a",
+            shadow=ft.BoxShadow(
+                blur_radius=50,
+                spread_radius=1,
+                color="#00000088",
+            ),
+            content=ft.Column(
+                [
+                    ft.Text("Welcome to AERIS",
+                            size=26,
+                            weight=ft.FontWeight.W_600),
+                    ft.Text("Enter your API credentials to begin.",
+                            size=14,
+                            color="#94a3b8"),
+                    ft.Container(height=25),
+                    self._openrouter_input,
+                    self._serpapi_input,
+                    ft.Container(height=25),
+                    self._save_btn,
+                    ft.Container(height=25),
+                    self._success_icon,
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=15,
+            ),
+        )
+
+        background = ft.Container(
+            expand=True,
+            gradient=ft.RadialGradient(
+                center=ft.Alignment(0, 0),
+                radius=1.2,
+                colors=["#0f1c3d", "#0b0f19"],
+            ),
+            content=ft.Row(
+                [setup_card],
+                alignment=ft.MainAxisAlignment.CENTER,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+        )
+
+        self._page.add(background)
+
+
+    async def _success_animation(self):
+
+        self._save_btn.disabled = True
+        self._success_icon.opacity = 1
+        self._page.update()
+
+        for i in range(15):
+            self._success_icon.scale = 1 + (i * 0.02)
+            self._page.update()
+            await asyncio.sleep(0.02)
+
+        await asyncio.sleep(0.6)
+
+        self._page.controls.clear()
+        self._build_main_ui()
+        self._page.update()
+
+
+    def _save_api_keys(self, e):
+
+        openrouter_key = self._openrouter_input.value.strip()
+        serpapi_key = self._serpapi_input.value.strip()
+
+        if not openrouter_key:
+            return
+
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+
+        with open(API_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "openrouter_api_key": openrouter_key,
+                    "serpapi_api_key": serpapi_key,
+                },
+                f,
+                indent=4,
+            )
+
+        asyncio.create_task(self._success_animation())
+
+
     def _build_main_ui(self):
 
         self._background = ft.Container(
