@@ -170,4 +170,4 @@ def bootstrap():
     print(f"[{current_step}/{steps}] Finalizing setup")
     time.sleep(0.5)
 
-    print("\nAERIS setup complete.\n")
+    print("\nAERIS boot complete.\n")
