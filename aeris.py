@@ -12,6 +12,7 @@ from interface import AerisUI
 from systems.launch_app import open_app
 from systems.internet_search import web_search
 from systems.weather_info import weather_action
+from systems.alarm_system import AlarmManager
 from systems.message_sender import send_message
 from systems.aircraft_report import handle_aircraft_command
 
@@ -21,6 +22,7 @@ from memory.temporary_memory import TemporaryMemory
 
 interrupt_commands = ["mute", "quit", "exit", "stop"]
 temp_memory = TemporaryMemory()
+alarm_manager = AlarmManager()
 
 MAIN_LOOP = None
 
@@ -41,7 +43,9 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
     if not user_text:
         return
 
-    if any(cmd in user_text.lower() for cmd in interrupt_commands):
+    lower_text = user_text.lower()
+
+    if any(cmd in lower_text for cmd in interrupt_commands):
         stop_speaking()
         temp_memory.reset()
         ui.stop_speaking()
@@ -49,6 +53,47 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
         return
 
     ui.start_processing()
+
+    alarm_keywords = ["set alarm", "wake me up", "alarm at", "alarm in"]
+
+    if any(k in lower_text for k in alarm_keywords):
+        target_time = alarm_manager.parse_time(user_text)
+
+        if not target_time:
+            message = "Sir, I could not determine the alarm time."
+            ui.write_log(f"AI: {message}")
+            if use_tts:
+                speak_with_state(ui, message)
+            else:
+                ui.stop_processing()
+            return
+
+        async def alarm_trigger():
+            delay = (target_time - alarm_manager.parse_time(
+                target_time.strftime("%H:%M"))
+            ).total_seconds()
+
+            await asyncio.sleep(
+                max((target_time - asyncio.get_running_loop().time()
+                     if False else (target_time - __import__("datetime").datetime.now()).total_seconds()), 0)
+            )
+
+            message = "Sir, your alarm is ringing."
+            ui.write_log(f"AI: {message}")
+            if use_tts:
+                speak_with_state(ui, message)
+
+        asyncio.create_task(alarm_trigger())
+
+        formatted = target_time.strftime("%H:%M")
+        confirm = f"Alarm set for {formatted}, sir."
+
+        ui.write_log(f"AI: {confirm}")
+        if use_tts:
+            speak_with_state(ui, confirm)
+        else:
+            ui.stop_processing()
+        return
 
     try:
         aircraft_response = handle_aircraft_command(user_text)
@@ -107,7 +152,7 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
     final_text = None
 
     if intent == "open_app":
-        result = open_app(
+        open_app(
             parameters=parameters,
             response=response,
             player=ui,
@@ -116,23 +161,21 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
         final_text = response or f"Opening {parameters.get('app_name','application')}."
 
     elif intent == "weather_report":
-        result = weather_action(
+        final_text = weather_action(
             parameters=parameters,
             player=ui,
             session_memory=temp_memory
         )
-        final_text = result
 
     elif intent == "search":
-        result = web_search(
+        final_text = web_search(
             parameters=parameters,
             player=ui,
             session_memory=temp_memory
         )
-        final_text = result
 
     elif intent == "send_message":
-        result = send_message(
+        send_message(
             parameters=parameters,
             player=ui,
             session_memory=temp_memory

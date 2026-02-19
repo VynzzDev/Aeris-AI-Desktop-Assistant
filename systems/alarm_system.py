@@ -1,0 +1,72 @@
+import re
+import asyncio
+from datetime import datetime, timedelta
+
+
+class AlarmManager:
+
+    def __init__(self):
+        self.alarms = []
+
+    def parse_time(self, text: str):
+        text = text.lower()
+
+        match_in = re.search(r"in (\d+)\s*(minute|minutes|hour|hours)", text)
+        if match_in:
+            value = int(match_in.group(1))
+            unit = match_in.group(2)
+
+            if "hour" in unit:
+                return datetime.now() + timedelta(hours=value)
+            else:
+                return datetime.now() + timedelta(minutes=value)
+
+        match_at = re.search(r"(?:at )?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", text)
+        if match_at:
+            hour = int(match_at.group(1))
+            minute = int(match_at.group(2) or 0)
+            meridiem = match_at.group(3)
+
+            if meridiem:
+                if meridiem == "pm" and hour != 12:
+                    hour += 12
+                if meridiem == "am" and hour == 12:
+                    hour = 0
+
+            now = datetime.now()
+            target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+            if target < now:
+                target += timedelta(days=1)
+
+            return target
+
+        return None
+
+    async def schedule_alarm(self, ui, target_time, use_tts, speak_function):
+        delay = (target_time - datetime.now()).total_seconds()
+        if delay <= 0:
+            return
+
+        await asyncio.sleep(delay)
+
+        message = "Sir, your alarm is ringing."
+
+        ui.write_log(f"AI: {message}")
+
+        if use_tts:
+            speak_function(ui, message)
+
+    def create_alarm(self, ui, user_text, use_tts, speak_function):
+        target_time = self.parse_time(user_text)
+
+        if not target_time:
+            return "Sir, I could not determine the alarm time."
+
+        asyncio.create_task(
+            self.schedule_alarm(ui, target_time, use_tts, speak_function)
+        )
+
+        formatted = target_time.strftime("%H:%M")
+
+        return f"Alarm set for {formatted}, sir."
