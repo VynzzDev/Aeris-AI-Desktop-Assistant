@@ -119,6 +119,7 @@ You need to install Python on your machine, i recommend using Python 3.12.9
 - [ ] Live Talk Mode
 - [ ] Aircraft Report
     - This is just an entertainment feature, this feature can detect aircraft around the LAT & LON that you set in the `aircraft_report.py` file in real time.
+- [ ] Many soon..
 
 See the [open issues](https://github.com/VynzzDev/Aeris-AI-Desktop-Assistant/issues) for a full list of proposed features (and known issues).
 
