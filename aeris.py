@@ -57,13 +57,17 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
     alarm_keywords = ["set alarm", "wake me up", "alarm at", "alarm in"]
 
     if any(k in lower_text for k in alarm_keywords):
-        target_time = alarm_manager.parse_time(user_text)
 
-        if not target_time:
-            message = "Sir, I could not determine the alarm time."
-            ui.write_log(f"AI: {message}")
+        result = alarm_manager.create_alarm(
+            ui,
+            user_text,
+            speak_with_state
+        )
+
+        if result:
+            ui.write_log(f"AI: {result}")
             if use_tts:
-                speak_with_state(ui, message)
+                speak_with_state(ui, result)
             else:
                 ui.stop_processing()
             return

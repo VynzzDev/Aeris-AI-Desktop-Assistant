@@ -31,6 +31,7 @@ REQUIRED_PACKAGES = [
     "google-search-results",
     "Pillow",
     "requests",
+    "win10toast",
 ]
 
 

@@ -1,6 +1,13 @@
 import re
 import asyncio
 from datetime import datetime, timedelta
+import threading
+
+try:
+    from win10toast import ToastNotifier
+    toaster = ToastNotifier()
+except Exception:
+    toaster = None
 
 
 class AlarmManager:
@@ -43,7 +50,20 @@ class AlarmManager:
 
         return None
 
-    async def schedule_alarm(self, ui, target_time, use_tts, speak_function):
+    def _show_windows_notification(self, message):
+        if toaster:
+            try:
+                toaster.show_toast(
+                    "AERIS Alarm",
+                    message,
+                    duration=10,
+                    threaded=True
+                )
+            except Exception:
+                pass
+
+    async def schedule_alarm(self, ui, target_time, speak_function):
+
         delay = (target_time - datetime.now()).total_seconds()
         if delay <= 0:
             return
@@ -54,17 +74,23 @@ class AlarmManager:
 
         ui.write_log(f"AI: {message}")
 
-        if use_tts:
-            speak_function(ui, message)
+        threading.Thread(
+            target=self._show_windows_notification,
+            args=(message,),
+            daemon=True
+        ).start()
 
-    def create_alarm(self, ui, user_text, use_tts, speak_function):
+        speak_function(ui, message)
+
+    def create_alarm(self, ui, user_text, speak_function):
+
         target_time = self.parse_time(user_text)
 
         if not target_time:
             return "Sir, I could not determine the alarm time."
 
         asyncio.create_task(
-            self.schedule_alarm(ui, target_time, use_tts, speak_function)
+            self.schedule_alarm(ui, target_time, speak_function)
         )
 
         formatted = target_time.strftime("%H:%M")
