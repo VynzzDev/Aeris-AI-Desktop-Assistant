@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 import threading
 
 try:
-    from win10toast import ToastNotifier
-    toaster = ToastNotifier()
+    from winotify import Notification, audio
+    WIN_NOTIFY_AVAILABLE = True
 except:
-    toaster = None
+    WIN_NOTIFY_AVAILABLE = False
 
 
 class AlarmManager:
@@ -50,17 +50,24 @@ class AlarmManager:
 
         return None
 
-    def _notify(self, message):
-        if toaster:
-            try:
-                toaster.show_toast(
-                    "AERIS Alarm",
-                    message,
-                    duration=10,
-                    threaded=True
-                )
-            except:
-                pass
+    def _show_notification(self, message):
+
+        if not WIN_NOTIFY_AVAILABLE:
+            return
+
+        try:
+            toast = Notification(
+                app_id="AERIS AI",
+                title="AERIS Alarm",
+                msg=message,
+                duration="long"
+            )
+
+            toast.set_audio(audio.Default, loop=False)
+            toast.show()
+
+        except:
+            pass
 
     async def _alarm_task(self, ui, target_time, speak_function):
 
@@ -75,7 +82,7 @@ class AlarmManager:
         ui.write_log(f"AI: {message}")
 
         threading.Thread(
-            target=self._notify,
+            target=self._show_notification,
             args=(message,),
             daemon=True
         ).start()
