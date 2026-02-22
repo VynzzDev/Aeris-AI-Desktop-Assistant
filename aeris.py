@@ -70,33 +70,7 @@ async def process_user_input(ui: AerisUI, user_text: str, use_tts: bool):
                 speak_with_state(ui, result)
             else:
                 ui.stop_processing()
-            return
 
-        async def alarm_trigger():
-            delay = (target_time - alarm_manager.parse_time(
-                target_time.strftime("%H:%M"))
-            ).total_seconds()
-
-            await asyncio.sleep(
-                max((target_time - asyncio.get_running_loop().time()
-                     if False else (target_time - __import__("datetime").datetime.now()).total_seconds()), 0)
-            )
-
-            message = "Sir, your alarm is ringing."
-            ui.write_log(f"AI: {message}")
-            if use_tts:
-                speak_with_state(ui, message)
-
-        asyncio.create_task(alarm_trigger())
-
-        formatted = target_time.strftime("%H:%M")
-        confirm = f"Alarm set for {formatted}, sir."
-
-        ui.write_log(f"AI: {confirm}")
-        if use_tts:
-            speak_with_state(ui, confirm)
-        else:
-            ui.stop_processing()
         return
 
     try:

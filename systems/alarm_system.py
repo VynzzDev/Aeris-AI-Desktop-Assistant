@@ -6,7 +6,7 @@ import threading
 try:
     from win10toast import ToastNotifier
     toaster = ToastNotifier()
-except Exception:
+except:
     toaster = None
 
 
@@ -50,7 +50,7 @@ class AlarmManager:
 
         return None
 
-    def _show_windows_notification(self, message):
+    def _notify(self, message):
         if toaster:
             try:
                 toaster.show_toast(
@@ -59,10 +59,10 @@ class AlarmManager:
                     duration=10,
                     threaded=True
                 )
-            except Exception:
+            except:
                 pass
 
-    async def schedule_alarm(self, ui, target_time, speak_function):
+    async def _alarm_task(self, ui, target_time, speak_function):
 
         delay = (target_time - datetime.now()).total_seconds()
         if delay <= 0:
@@ -75,7 +75,7 @@ class AlarmManager:
         ui.write_log(f"AI: {message}")
 
         threading.Thread(
-            target=self._show_windows_notification,
+            target=self._notify,
             args=(message,),
             daemon=True
         ).start()
@@ -90,9 +90,7 @@ class AlarmManager:
             return "Sir, I could not determine the alarm time."
 
         asyncio.create_task(
-            self.schedule_alarm(ui, target_time, speak_function)
+            self._alarm_task(ui, target_time, speak_function)
         )
 
-        formatted = target_time.strftime("%H:%M")
-
-        return f"Alarm set for {formatted}, sir."
+        return f"Alarm set for {target_time.strftime('%H:%M')}, sir."
